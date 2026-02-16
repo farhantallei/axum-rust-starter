@@ -13,7 +13,7 @@ use crate::{
         health_service::{get_cpus, get_db_connection, get_memory},
     },
     shared::error::AppError,
-    state::AppState,
+    shared::state::AppState,
 };
 
 pub async fn healthcheck_handler(

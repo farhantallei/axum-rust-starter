@@ -1,6 +1,6 @@
 use axum::Router;
 
-use crate::{modules::health::health_route, state::AppState};
+use crate::{modules::health::health_route, shared::state::AppState};
 
 pub mod health;
 

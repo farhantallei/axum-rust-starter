@@ -1,12 +1,11 @@
 use std::time::Instant;
 
-use crate::{config::db::init_db, state::AppState};
+use crate::{config::db::init_db, shared::state::AppState};
 
 pub mod config;
 pub mod data;
 pub mod modules;
 pub mod shared;
-pub mod state;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
