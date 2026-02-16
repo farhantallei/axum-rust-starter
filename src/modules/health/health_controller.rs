@@ -8,12 +8,8 @@ use chrono::Utc;
 use sysinfo::System;
 
 use crate::{
-    modules::health::{
-        health_dto::GetHealthResponse,
-        health_service::{get_cpus, get_db_connection, get_memory},
-    },
-    shared::error::AppError,
-    shared::state::AppState,
+    modules::health::{health_dto::GetHealthResponse, health_service::HealthService},
+    shared::{error::AppError, state::AppState},
 };
 
 pub async fn healthcheck_handler(
@@ -27,7 +23,7 @@ pub async fn healthcheck_handler(
 
     sys.refresh_memory();
 
-    let db_status = get_db_connection(&state.db).await;
+    let db_status = HealthService::get_db_connection(&state.db).await;
 
     let response = GetHealthResponse {
         status: "ok".to_string(),
@@ -42,8 +38,8 @@ pub async fn healthcheck_handler(
         platform: OS.to_string(),
         arch: ARCH.to_string(),
         pid: process::id().to_string(),
-        cpus: get_cpus(&sys),
-        memory: get_memory(&sys),
+        cpus: HealthService::get_cpus(&sys),
+        memory: HealthService::get_memory(&sys),
     };
 
     Ok(Json(response))
