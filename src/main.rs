@@ -6,6 +6,7 @@ pub mod config;
 pub mod data;
 pub mod modules;
 pub mod shared;
+pub mod utils;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
