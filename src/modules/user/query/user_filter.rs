@@ -6,6 +6,7 @@ pub enum UserFilter {
     NameLike(String),
     Email(String),
     IsActive(bool),
+    IsDeleted(bool),
 }
 
 impl ApplyFilter for UserFilter {
@@ -22,6 +23,13 @@ impl ApplyFilter for UserFilter {
             UserFilter::IsActive(active) => {
                 qb.push(" u.status = ");
                 qb.push_bind(*active);
+            }
+            UserFilter::IsDeleted(deleted) => {
+                if *deleted {
+                    qb.push(" u.deleted_at IS NOT NULL");
+                } else {
+                    qb.push(" u.deleted_at IS NULL");
+                }
             }
         }
     }

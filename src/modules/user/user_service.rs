@@ -28,6 +28,7 @@ impl UserService {
         order: Option<String>,
         limit: Option<i64>,
         offset: Option<i64>,
+        actived: Option<bool>,
     ) -> Result<Vec<UserModel>, sqlx::Error> {
         let mut qb = QueryBuilder::new(Self::BASE_QUERY);
 
@@ -37,10 +38,13 @@ impl UserService {
         }
 
         // FILTER
-        let mut filters = vec![Filter::Condition(UserFilter::IsActive(true))];
+        let mut filters = vec![Filter::Condition(UserFilter::IsDeleted(false))];
 
         if let Some(keyword) = keyword {
             filters.push(Filter::Condition(UserFilter::NameLike(keyword)));
+        }
+        if let Some(actived) = actived {
+            filters.push(Filter::Condition(UserFilter::IsActive(actived)));
         }
 
         Filter::And(filters).apply(&mut qb);
@@ -76,6 +80,7 @@ impl UserService {
         db: &Pool<Postgres>,
         joins: &[UserJoin],
         keyword: Option<String>,
+        actived: Option<bool>,
     ) -> Result<i64, sqlx::Error> {
         let mut qb = QueryBuilder::new(Self::BASE_COUNT_QUERY);
 
@@ -85,10 +90,13 @@ impl UserService {
         }
 
         // FILTER
-        let mut filters = vec![Filter::Condition(UserFilter::IsActive(true))];
+        let mut filters = vec![Filter::Condition(UserFilter::IsDeleted(false))];
 
         if let Some(keyword) = keyword {
             filters.push(Filter::Condition(UserFilter::NameLike(keyword)));
+        }
+        if let Some(actived) = actived {
+            filters.push(Filter::Condition(UserFilter::IsActive(actived)));
         }
 
         Filter::And(filters).apply(&mut qb);

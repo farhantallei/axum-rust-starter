@@ -18,15 +18,16 @@ pub async fn find_all_user_handler(
         &state.db,
         &[],
         params.keyword().clone(),
-        params.sort_by.clone(),
+        params.sort_by(),
         params.order(),
         params.limit(),
         params.start(),
+        params.actived,
     )
     .await
     .map_err(|e| AppError::Internal(e.into()))?;
 
-    let total = UserService::count_all_user(&state.db, &[], params.keyword())
+    let total = UserService::count_all_user(&state.db, &[], params.keyword(), params.actived)
         .await
         .map_err(|e| AppError::Internal(e.into()))?;
 

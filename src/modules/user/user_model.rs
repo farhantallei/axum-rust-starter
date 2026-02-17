@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
@@ -10,4 +11,8 @@ pub struct UserModel {
     pub name: String,
     pub email: String,
     pub status: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    #[serde(skip_serializing)]
+    pub deleted_at: Option<DateTime<Utc>>,
 }

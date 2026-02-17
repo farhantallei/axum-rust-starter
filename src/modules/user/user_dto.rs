@@ -9,7 +9,7 @@ use crate::{
 pub struct GetUserQuery {
     #[serde(flatten)]
     pub base: ListQuery,
-    pub sort_by: Option<String>,
+    pub actived: Option<bool>,
 }
 
 impl ListQueryImpl for GetUserQuery {
@@ -21,6 +21,10 @@ impl ListQueryImpl for GetUserQuery {
     }
     fn keyword(&self) -> Option<String> {
         self.base.keyword.clone()
+    }
+
+    fn sort_by(&self) -> Option<String> {
+        self.base.sort_by.clone()
     }
 
     fn order(&self) -> Option<String> {
