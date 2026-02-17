@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    modules::user::user_model::UserModel,
+    modules::user::{user_model::UserModel, user_spec::UserFilter},
     shared::request::{ListQuery, ListQueryImpl},
 };
 
@@ -29,6 +29,22 @@ impl ListQueryImpl for GetUserQuery {
 
     fn order(&self) -> Option<String> {
         self.base.order.clone()
+    }
+}
+
+impl GetUserQuery {
+    pub fn to_filters(&self) -> Vec<UserFilter> {
+        let mut filters = vec![];
+
+        if let Some(keyword) = &self.keyword() {
+            filters.push(UserFilter::NameLike(keyword.clone()));
+        }
+
+        if let Some(actived) = self.actived {
+            filters.push(UserFilter::IsActive(actived));
+        }
+
+        filters
     }
 }
 

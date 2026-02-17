@@ -3,8 +3,8 @@ use tracing::instrument;
 
 use crate::{
     modules::user::{
-        query::{user_filter::UserFilter, user_join::UserJoin, user_order::UserOrder},
         user_model::UserModel,
+        user_spec::{UserFilter, UserJoin, UserOrder},
     },
     utils::{
         filter::Filter,
@@ -19,16 +19,15 @@ impl UserService {
     pub const BASE_QUERY: &str = "SELECT u.* FROM users u";
     pub const BASE_COUNT_QUERY: &str = "SELECT COUNT(u.*) FROM users u";
 
-    #[instrument(skip(joins))]
+    #[instrument(skip(joins, filters))]
     pub async fn find_all_user(
         db: &Pool<Postgres>,
         joins: &[UserJoin],
-        keyword: Option<String>,
+        filters: &[UserFilter],
         sort_by: Option<String>,
         order: Option<String>,
         limit: Option<i64>,
         offset: Option<i64>,
-        actived: Option<bool>,
     ) -> Result<Vec<UserModel>, sqlx::Error> {
         let mut qb = QueryBuilder::new(Self::BASE_QUERY);
 
@@ -38,16 +37,11 @@ impl UserService {
         }
 
         // FILTER
-        let mut filters = vec![Filter::Condition(UserFilter::IsDeleted(false))];
+        let mut all_filters = vec![Filter::Condition(UserFilter::IsDeleted(false))];
 
-        if let Some(keyword) = keyword {
-            filters.push(Filter::Condition(UserFilter::NameLike(keyword)));
-        }
-        if let Some(actived) = actived {
-            filters.push(Filter::Condition(UserFilter::IsActive(actived)));
-        }
+        all_filters.extend(filters.iter().cloned().map(Filter::Condition));
 
-        Filter::And(filters).apply(&mut qb);
+        Filter::And(all_filters).apply(&mut qb);
 
         // ORDER
         let order_field = match sort_by.as_deref() {
@@ -75,12 +69,11 @@ impl UserService {
         Ok(rows)
     }
 
-    #[instrument(skip(joins))]
+    #[instrument(skip(joins, filters))]
     pub async fn count_all_user(
         db: &Pool<Postgres>,
         joins: &[UserJoin],
-        keyword: Option<String>,
-        actived: Option<bool>,
+        filters: &[UserFilter],
     ) -> Result<i64, sqlx::Error> {
         let mut qb = QueryBuilder::new(Self::BASE_COUNT_QUERY);
 
@@ -90,16 +83,11 @@ impl UserService {
         }
 
         // FILTER
-        let mut filters = vec![Filter::Condition(UserFilter::IsDeleted(false))];
+        let mut all_filters = vec![Filter::Condition(UserFilter::IsDeleted(false))];
 
-        if let Some(keyword) = keyword {
-            filters.push(Filter::Condition(UserFilter::NameLike(keyword)));
-        }
-        if let Some(actived) = actived {
-            filters.push(Filter::Condition(UserFilter::IsActive(actived)));
-        }
+        all_filters.extend(filters.iter().cloned().map(Filter::Condition));
 
-        Filter::And(filters).apply(&mut qb);
+        Filter::And(all_filters).apply(&mut qb);
 
         let count: i64 = qb.build_query_scalar().fetch_one(db).await?;
         Ok(count)

@@ -1,16 +1,12 @@
-use crate::utils::filter::ApplyFilter;
-use sqlx::QueryBuilder;
+use sqlx::{Postgres, QueryBuilder};
 
-#[derive(Clone)]
-pub enum UserFilter {
-    NameLike(String),
-    Email(String),
-    IsActive(bool),
-    IsDeleted(bool),
-}
+use crate::{
+    modules::user::user_spec::{UserFilter, UserJoin, UserOrder},
+    utils::{filter::ApplyFilter, order::ApplyOrder},
+};
 
 impl ApplyFilter for UserFilter {
-    fn apply<'a>(&self, qb: &mut QueryBuilder<'a, sqlx::Postgres>) {
+    fn apply<'a>(&self, qb: &mut QueryBuilder<'a, Postgres>) {
         match self {
             UserFilter::NameLike(val) => {
                 qb.push(" u.name ILIKE ");
@@ -32,5 +28,20 @@ impl ApplyFilter for UserFilter {
                 }
             }
         }
+    }
+}
+
+impl UserJoin {
+    pub fn apply(&self, _qb: &mut QueryBuilder<Postgres>) {}
+}
+
+impl ApplyOrder for UserOrder {
+    fn apply<'a>(&self, qb: &mut QueryBuilder<'a, Postgres>) {
+        match self {
+            Self::Id => qb.push("u.id"),
+            Self::Name => qb.push("u.name"),
+            Self::Email => qb.push("u.email"),
+            Self::CreatedAt => qb.push("u.created_at"),
+        };
     }
 }
