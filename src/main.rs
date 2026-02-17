@@ -1,6 +1,7 @@
 use std::time::Instant;
 
-use crate::{config::db::init_db, shared::state::AppState};
+use tower_http::trace::TraceLayer;
+use tracing::info;
 
 pub mod config;
 pub mod data;
@@ -12,17 +13,20 @@ pub mod utils;
 async fn main() -> anyhow::Result<()> {
     let env = data::env::init_env();
 
-    let db = init_db(&env).await?;
+    config::logger::init_logger();
+    let db = config::db::init_db(&env).await?;
 
-    let state = AppState {
+    let state = shared::state::AppState {
         started_at: Instant::now(),
         db,
     };
 
-    let app = modules::create_router(state);
+    let app = modules::create_router()
+        .with_state(state)
+        .layer(TraceLayer::new_for_http());
 
     let addr = format!("0.0.0.0:{}", env.port);
-    println!("🚀 Server running on {}", addr);
+    info!("🚀 Server running on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;

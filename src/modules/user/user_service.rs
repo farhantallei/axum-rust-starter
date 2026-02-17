@@ -1,4 +1,5 @@
 use sqlx::{Pool, Postgres, QueryBuilder};
+use tracing::instrument;
 
 use crate::{
     modules::user::{
@@ -18,6 +19,7 @@ impl UserService {
     pub const BASE_QUERY: &str = "SELECT u.* FROM users u";
     pub const BASE_COUNT_QUERY: &str = "SELECT COUNT(u.*) FROM users u";
 
+    #[instrument(skip(joins))]
     pub async fn find_all_user(
         db: &Pool<Postgres>,
         joins: &[UserJoin],
@@ -65,12 +67,11 @@ impl UserService {
             qb.push_bind(offset as i32);
         }
 
-        // println!("SQL: {}", qb.sql());
-
         let rows = qb.build_query_as::<UserModel>().fetch_all(db).await?;
         Ok(rows)
     }
 
+    #[instrument(skip(joins))]
     pub async fn count_all_user(
         db: &Pool<Postgres>,
         joins: &[UserJoin],
@@ -91,8 +92,6 @@ impl UserService {
         }
 
         Filter::And(filters).apply(&mut qb);
-
-        // println!("SQL: {}", qb.sql());
 
         let count: i64 = qb.build_query_scalar().fetch_one(db).await?;
         Ok(count)

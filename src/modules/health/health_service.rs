@@ -1,5 +1,6 @@
 use sqlx::{Pool, Postgres};
 use sysinfo::System;
+use tracing::instrument;
 
 use crate::modules::health::{health_dto::Cpu, health_util::format_bytes};
 
@@ -7,6 +8,7 @@ use crate::modules::health::{health_dto::Cpu, health_util::format_bytes};
 pub struct HealthService;
 
 impl HealthService {
+    #[instrument]
     pub fn get_cpus(sys: &System) -> Vec<Cpu> {
         sys.cpus()
             .iter()
@@ -17,6 +19,7 @@ impl HealthService {
             .collect()
     }
 
+    #[instrument]
     pub fn get_memory(sys: &System) -> String {
         format!(
             "{} / {}",
@@ -25,6 +28,7 @@ impl HealthService {
         )
     }
 
+    #[instrument]
     pub async fn get_db_connection(db: &Pool<Postgres>) -> bool {
         let result = sqlx::query("SELECT 1").fetch_one(db).await;
 

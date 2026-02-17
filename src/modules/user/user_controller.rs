@@ -1,4 +1,5 @@
 use axum::extract::{Query, State};
+use tracing::instrument;
 
 use crate::{
     modules::user::{
@@ -8,6 +9,7 @@ use crate::{
     shared::{error::AppError, request::ListQueryImpl, response::ListResponse, state::AppState},
 };
 
+#[instrument(skip(state))]
 pub async fn find_all_user_handler(
     State(state): State<AppState>,
     Query(params): Query<GetUserQuery>,

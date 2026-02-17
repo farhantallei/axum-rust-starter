@@ -6,12 +6,14 @@ use std::{
 use axum::{Json, extract::State};
 use chrono::Utc;
 use sysinfo::System;
+use tracing::instrument;
 
 use crate::{
     modules::health::{health_dto::GetHealthResponse, health_service::HealthService},
     shared::{error::AppError, state::AppState},
 };
 
+#[instrument(skip(state))]
 pub async fn healthcheck_handler(
     State(state): State<AppState>,
 ) -> Result<Json<GetHealthResponse>, AppError> {
