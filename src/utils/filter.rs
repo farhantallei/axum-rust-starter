@@ -12,7 +12,7 @@ pub enum Filter<C> {
 }
 
 impl<C: ApplyFilter> Filter<C> {
-    pub fn apply_where<'a>(&self, qb: &mut QueryBuilder<'a, Postgres>) {
+    pub fn apply<'a>(&self, qb: &mut QueryBuilder<'a, Postgres>) {
         qb.push(" WHERE ");
         self.apply_inner(qb);
     }
@@ -64,7 +64,7 @@ mod tests {
 
     fn build_sql(filter: &Filter<MockCond>) -> String {
         let mut qb = QueryBuilder::<Postgres>::new("SELECT * FROM test");
-        filter.apply_where(&mut qb);
+        filter.apply(&mut qb);
         qb.build().sql().to_string()
     }
 
