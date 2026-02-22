@@ -1,9 +1,5 @@
 use sqlx::{Postgres, QueryBuilder};
 
-pub trait ApplyOrder {
-    fn apply<'a>(&self, qb: &mut QueryBuilder<'a, Postgres>);
-}
-
 #[derive(Clone)]
 pub enum Order<C> {
     Asc(C),
@@ -13,8 +9,11 @@ pub enum Order<C> {
 #[derive(Clone, Default)]
 pub struct OrderBy<C>(pub Vec<Order<C>>);
 
-impl<C: ApplyOrder> OrderBy<C> {
-    pub fn apply<'a>(&self, qb: &mut QueryBuilder<'a, Postgres>) {
+impl<C> OrderBy<C> {
+    pub fn apply<'a, F>(&self, qb: &mut QueryBuilder<'a, Postgres>, alias: &str, render: &F)
+    where
+        F: Fn(&C, &mut QueryBuilder<'a, Postgres>, &str),
+    {
         if self.0.is_empty() {
             return;
         }
@@ -28,11 +27,11 @@ impl<C: ApplyOrder> OrderBy<C> {
 
             match order {
                 Order::Asc(col) => {
-                    col.apply(qb);
+                    render(col, qb, alias);
                     qb.push(" ASC");
                 }
                 Order::Desc(col) => {
-                    col.apply(qb);
+                    render(col, qb, alias);
                     qb.push(" DESC");
                 }
             }
@@ -43,16 +42,10 @@ impl<C: ApplyOrder> OrderBy<C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::Execute;
+    use sqlx::{Execute, Postgres, QueryBuilder};
 
     #[derive(Clone)]
     struct MockOrder(&'static str);
-
-    impl ApplyOrder for MockOrder {
-        fn apply<'a>(&self, qb: &mut QueryBuilder<'a, Postgres>) {
-            qb.push(self.0);
-        }
-    }
 
     #[test]
     fn order_by_multiple_columns() {
@@ -61,11 +54,32 @@ mod tests {
             Order::Desc(MockOrder("b")),
         ]);
 
-        let mut qb = QueryBuilder::<Postgres>::new("SELECT * FROM test");
-        order.apply(&mut qb);
+        let mut qb = QueryBuilder::<Postgres>::new("SELECT * FROM test alias");
+
+        order.apply(&mut qb, "alias", &|col, qb, alias| {
+            qb.push(format!("{}.{}", alias, col.0));
+        });
 
         let sql = qb.build().sql();
 
-        assert_eq!(sql, "SELECT * FROM test ORDER BY a ASC, b DESC");
+        assert_eq!(
+            sql,
+            "SELECT * FROM test alias ORDER BY alias.a ASC, alias.b DESC"
+        );
+    }
+
+    #[test]
+    fn empty_order_should_not_emit_clause() {
+        let order: OrderBy<MockOrder> = OrderBy(vec![]);
+
+        let mut qb = QueryBuilder::<Postgres>::new("SELECT * FROM test alias");
+
+        order.apply(&mut qb, "alias", &|col, qb, alias| {
+            qb.push(format!("{}.{}", alias, col.0));
+        });
+
+        let sql = qb.build().sql();
+
+        assert_eq!(sql, "SELECT * FROM test alias");
     }
 }

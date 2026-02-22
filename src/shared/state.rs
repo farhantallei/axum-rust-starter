@@ -1,9 +1,9 @@
 use std::time::Instant;
 
-use sqlx::{Pool, Postgres};
+use crate::config::db::DbPool;
 
 #[derive(Clone)]
 pub struct AppState {
     pub started_at: Instant,
-    pub db: Pool<Postgres>,
+    pub db: DbPool,
 }

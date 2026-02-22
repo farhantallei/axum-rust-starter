@@ -1,9 +1,5 @@
 use sqlx::{Postgres, QueryBuilder};
 
-pub trait ApplyFilter {
-    fn apply<'a>(&self, qb: &mut QueryBuilder<'a, Postgres>);
-}
-
 #[derive(Clone)]
 pub enum Filter<C> {
     Condition(C),
@@ -11,17 +7,21 @@ pub enum Filter<C> {
     Or(Vec<Filter<C>>),
 }
 
-impl<C: ApplyFilter> Filter<C> {
-    pub fn apply<'a>(&self, qb: &mut QueryBuilder<'a, Postgres>) {
+impl<C> Filter<C> {
+    pub fn apply<'a, F>(&self, qb: &mut QueryBuilder<'a, Postgres>, alias: &str, render: &F)
+    where
+        F: Fn(&C, &mut QueryBuilder<'a, Postgres>, &str),
+    {
         qb.push(" WHERE ");
-        self.apply_inner(qb);
+        self.apply_inner(qb, alias, render);
     }
 
-    fn apply_inner<'a>(&self, qb: &mut QueryBuilder<'a, Postgres>) {
+    fn apply_inner<'a, F>(&self, qb: &mut QueryBuilder<'a, Postgres>, alias: &str, render: &F)
+    where
+        F: Fn(&C, &mut QueryBuilder<'a, Postgres>, &str),
+    {
         match self {
-            Filter::Condition(cond) => {
-                cond.apply(qb);
-            }
+            Filter::Condition(cond) => render(cond, qb, alias),
 
             Filter::And(children) => {
                 qb.push("(");
@@ -29,7 +29,7 @@ impl<C: ApplyFilter> Filter<C> {
                     if i > 0 {
                         qb.push(" AND ");
                     }
-                    c.apply_inner(qb);
+                    c.apply_inner(qb, alias, render);
                 }
                 qb.push(")");
             }
@@ -40,7 +40,7 @@ impl<C: ApplyFilter> Filter<C> {
                     if i > 0 {
                         qb.push(" OR ");
                     }
-                    c.apply_inner(qb);
+                    c.apply_inner(qb, alias, render);
                 }
                 qb.push(")");
             }
@@ -51,20 +51,18 @@ impl<C: ApplyFilter> Filter<C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::Execute;
+    use sqlx::{Execute, Postgres, QueryBuilder};
 
     #[derive(Clone)]
     struct MockCond(&'static str);
 
-    impl ApplyFilter for MockCond {
-        fn apply<'a>(&self, qb: &mut QueryBuilder<'a, Postgres>) {
-            qb.push(self.0);
-        }
-    }
-
     fn build_sql(filter: &Filter<MockCond>) -> String {
-        let mut qb = QueryBuilder::<Postgres>::new("SELECT * FROM test");
-        filter.apply(&mut qb);
+        let mut qb = QueryBuilder::<Postgres>::new("SELECT * FROM test alias");
+
+        filter.apply(&mut qb, "alias", &|cond, qb, alias| {
+            qb.push(format!("{}.{}", alias, cond.0));
+        });
+
         qb.build().sql().to_string()
     }
 
@@ -74,7 +72,7 @@ mod tests {
 
         let sql = build_sql(&filter);
 
-        assert_eq!(sql, "SELECT * FROM test WHERE a = 1");
+        assert_eq!(sql, "SELECT * FROM test alias WHERE alias.a = 1");
     }
 
     #[test]
@@ -86,7 +84,10 @@ mod tests {
 
         let sql = build_sql(&filter);
 
-        assert_eq!(sql, "SELECT * FROM test WHERE (a = 1 AND b = 2)");
+        assert_eq!(
+            sql,
+            "SELECT * FROM test alias WHERE (alias.a = 1 AND alias.b = 2)"
+        );
     }
 
     #[test]
@@ -98,7 +99,10 @@ mod tests {
 
         let sql = build_sql(&filter);
 
-        assert_eq!(sql, "SELECT * FROM test WHERE (a = 1 OR b = 2)");
+        assert_eq!(
+            sql,
+            "SELECT * FROM test alias WHERE (alias.a = 1 OR alias.b = 2)"
+        );
     }
 
     #[test]
@@ -113,7 +117,10 @@ mod tests {
 
         let sql = build_sql(&filter);
 
-        assert_eq!(sql, "SELECT * FROM test WHERE (a = 1 AND (b = 2 OR c = 3))");
+        assert_eq!(
+            sql,
+            "SELECT * FROM test alias WHERE (alias.a = 1 AND (alias.b = 2 OR alias.c = 3))"
+        );
     }
 
     #[test]
@@ -139,7 +146,7 @@ mod tests {
 
         assert_eq!(
             sql,
-            "SELECT * FROM test WHERE ((a = 1 AND b = 2) AND c = 3)"
+            "SELECT * FROM test alias WHERE ((alias.a = 1 AND alias.b = 2) AND alias.c = 3)"
         );
     }
 }

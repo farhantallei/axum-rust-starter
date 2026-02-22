@@ -13,10 +13,10 @@ pub struct GetUserQuery {
 }
 
 impl ListQueryImpl for GetUserQuery {
-    fn start(&self) -> Option<i64> {
+    fn start(&self) -> Option<i32> {
         self.base.start
     }
-    fn limit(&self) -> Option<i64> {
+    fn limit(&self) -> Option<i32> {
         self.base.limit
     }
     fn keyword(&self) -> Option<String> {

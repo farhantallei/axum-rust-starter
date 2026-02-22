@@ -7,7 +7,9 @@ pub enum UserFilter {
 }
 
 #[derive(Clone)]
-pub enum UserJoin {}
+pub enum UserJoin {
+    UserRole,
+}
 
 #[derive(Clone)]
 pub enum UserOrder {

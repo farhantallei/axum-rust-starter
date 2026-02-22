@@ -1,5 +1,4 @@
 use axum::extract::{Query, State};
-use tracing::instrument;
 
 use crate::{
     modules::user::{
@@ -9,12 +8,12 @@ use crate::{
     shared::{error::AppError, request::ListQueryImpl, response::ListResponse, state::AppState},
 };
 
-#[instrument(skip(state))]
+#[tracing::instrument(skip(state))]
 pub async fn find_all_user_handler(
     State(state): State<AppState>,
     Query(params): Query<GetUserQuery>,
 ) -> Result<ListResponse<GetUserResponse>, AppError> {
-    let data = UserService::find_all_user(
+    let data = UserService::find_all_user_with_count(
         &state.db,
         &[],
         &params.to_filters(),
@@ -23,20 +22,7 @@ pub async fn find_all_user_handler(
         params.limit(),
         params.start(),
     )
-    .await
-    .map_err(|e| AppError::Internal(e.into()))?;
+    .await?;
 
-    let total = UserService::count_all_user(&state.db, &[], &params.to_filters())
-        .await
-        .map_err(|e| AppError::Internal(e.into()))?;
-
-    let response: Vec<GetUserResponse> = data
-        .into_iter()
-        .map(|item| GetUserResponse { user: item })
-        .collect();
-
-    Ok(ListResponse {
-        data: response,
-        records_filtered: total,
-    })
+    Ok(data)
 }

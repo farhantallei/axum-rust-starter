@@ -7,6 +7,7 @@ use crate::{
 
 pub mod health;
 pub mod user;
+pub mod user_role;
 
 pub fn create_router() -> Router<AppState> {
     Router::new().nest(

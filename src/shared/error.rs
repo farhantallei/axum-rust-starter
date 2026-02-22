@@ -1,4 +1,4 @@
-use axum::{Json, http::StatusCode, response::IntoResponse};
+use axum::{http::StatusCode, response::IntoResponse, Json};
 use serde::Serialize;
 use validator::ValidationErrors;
 
@@ -26,16 +26,12 @@ pub enum AppError {
     Forbidden(String),
 
     #[error("Internal server error")]
-    Internal(anyhow::Error),
+    Internal,
 }
 
 impl AppError {
     pub fn validation(errs: ValidationErrors) -> Self {
         AppError::Validation(errs)
-    }
-
-    pub fn internal<E: Into<anyhow::Error>>(e: E) -> Self {
-        AppError::Internal(e.into())
     }
 
     fn to_response(&self) -> (StatusCode, Json<ErrorResponse>) {
@@ -80,14 +76,28 @@ impl AppError {
                     details: None,
                 }),
             ),
-            AppError::Internal(e) => (
+            AppError::Internal => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse {
                     message: "Internal server error".to_string(),
-                    details: Some(serde_json::json!({"error": e.to_string()})),
+                    details: None,
                 }),
             ),
         }
+    }
+}
+
+impl From<sqlx::Error> for AppError {
+    fn from(err: sqlx::Error) -> Self {
+        tracing::error!("Database error: {:?}", err);
+        AppError::Internal
+    }
+}
+
+impl From<anyhow::Error> for AppError {
+    fn from(err: anyhow::Error) -> Self {
+        tracing::error!("Internal error: {:?}", err);
+        AppError::Internal
     }
 }
 
