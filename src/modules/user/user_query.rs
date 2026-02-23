@@ -68,7 +68,7 @@ impl UserQuery {
     fn select_fragment<'a>(qb: &mut QueryBuilder<'a, Postgres>, join: &UserJoin) {
         match join {
             UserJoin::UserRole => {
-                qb.push(format!(", to_json({}.*) AS role", Self::ROLE_ALIAS));
+                qb.push(format!(", to_jsonb({}.*) AS role", Self::ROLE_ALIAS));
             }
         }
     }
