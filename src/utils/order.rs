@@ -6,6 +6,15 @@ pub enum Order<C> {
     Desc(C),
 }
 
+impl<C> Order<C> {
+    pub fn from_str(order: Option<&str>, field: C) -> Self {
+        match order {
+            Some("asc") => Self::Asc(field),
+            _ => Self::Desc(field),
+        }
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct OrderBy<C>(pub Vec<Order<C>>);
 

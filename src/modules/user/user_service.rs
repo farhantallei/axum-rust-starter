@@ -27,40 +27,41 @@ impl UserService {
         limit: Option<i32>,
         offset: Option<i32>,
     ) -> Result<(Vec<UserModel>, i64), anyhow::Error> {
-        // JOIN
-        let mut all_joins = vec![UserJoin::UserRole];
+        // ===== JOIN =====
+        let mut effective_joins = Vec::with_capacity(1 + joins.len());
+        effective_joins.push(UserJoin::UserRole);
+        effective_joins.extend_from_slice(joins);
 
-        all_joins.extend(joins.iter().cloned());
+        // ===== FILTER =====
+        let mut effective_filters = Vec::with_capacity(1 + filters.len());
+        effective_filters.push(UserFilter::IsDeleted(false));
+        effective_filters.extend_from_slice(filters);
 
-        // FILTER
-        let mut all_filters = vec![UserFilter::IsDeleted(false)];
-
-        all_filters.extend(filters.iter().cloned());
-
-        // ORDER
+        // ===== ORDER =====
         let order_field = match sort_by.as_deref() {
             Some("name") => UserOrder::Name,
             _ => UserOrder::Id,
         };
+        let order = Order::from_str(order.as_deref(), order_field);
+        let effective_orders = OrderBy(vec![order]);
 
-        let order = match order.as_deref() {
-            Some("desc") => Order::Desc(order_field),
-            _ => Order::Asc(order_field),
-        };
+        // ===== PAGINATION =====
+        let pagination = Pagination::new(limit, offset);
 
-        // PAGINATION
-        let pagination = Pagination { limit, offset };
+        // ===== EXECUTE PARALLEL QUERY =====
+        let (total_res, data_res) = tokio::join!(
+            UserRepository::count_all(db, &effective_joins, &effective_filters),
+            UserRepository::find_all(
+                db,
+                &effective_joins,
+                &effective_filters,
+                &effective_orders,
+                &pagination,
+            )
+        );
 
-        let total = UserRepository::count_all(db, &all_joins, &all_filters).await?;
-
-        let data = UserRepository::find_all(
-            db,
-            &all_joins,
-            &all_filters,
-            &OrderBy(vec![order]),
-            &pagination,
-        )
-        .await?;
+        let total = total_res?;
+        let data = data_res?;
 
         Ok((data, total))
     }

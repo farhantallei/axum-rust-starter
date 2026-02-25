@@ -7,6 +7,10 @@ pub struct Pagination {
 }
 
 impl Pagination {
+    pub fn new(limit: Option<i32>, offset: Option<i32>) -> Self {
+        Self { limit, offset }
+    }
+
     pub fn apply<'a>(&self, qb: &mut QueryBuilder<'a, Postgres>) {
         if let Some(limit) = self.limit {
             qb.push(" LIMIT ");
