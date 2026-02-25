@@ -13,7 +13,7 @@ pub async fn find_all_user_handler(
     State(state): State<AppState>,
     Query(params): Query<GetUserQuery>,
 ) -> Result<ListResponse<GetUserResponse>, AppError> {
-    let data = UserService::find_all_user_with_count(
+    let (data, total) = UserService::find_all_user_with_count(
         &state.db,
         &[],
         &params.to_filters(),
@@ -24,5 +24,13 @@ pub async fn find_all_user_handler(
     )
     .await?;
 
-    Ok(data)
+    let response = data
+        .into_iter()
+        .map(|item| GetUserResponse { user: item })
+        .collect();
+
+    Ok(ListResponse {
+        data: response,
+        records_filtered: total,
+    })
 }

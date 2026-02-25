@@ -3,11 +3,10 @@ use tracing::instrument;
 use crate::{
     config::db::DbPool,
     modules::user::{
-        user_dto::GetUserResponse,
+        user_model::UserModel,
         user_repository::UserRepository,
         user_spec::{UserFilter, UserJoin, UserOrder},
     },
-    shared::response::ListResponse,
     utils::{
         order::{Order, OrderBy},
         pagination::Pagination,
@@ -27,7 +26,7 @@ impl UserService {
         order: Option<String>,
         limit: Option<i32>,
         offset: Option<i32>,
-    ) -> Result<ListResponse<GetUserResponse>, anyhow::Error> {
+    ) -> Result<(Vec<UserModel>, i64), anyhow::Error> {
         // JOIN
         let mut all_joins = vec![UserJoin::UserRole];
 
@@ -63,12 +62,6 @@ impl UserService {
         )
         .await?;
 
-        Ok(ListResponse {
-            data: data
-                .into_iter()
-                .map(|item| GetUserResponse { user: item })
-                .collect(),
-            records_filtered: total,
-        })
+        Ok((data, total))
     }
 }
