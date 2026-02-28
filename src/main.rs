@@ -3,11 +3,12 @@ use std::time::Instant;
 use tower_http::trace::TraceLayer;
 use tracing::info;
 
+pub mod application;
 pub mod config;
 pub mod data;
+pub mod infrastructure;
 pub mod modules;
-pub mod shared;
-pub mod utils;
+pub mod presentation;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -16,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
     config::logger::init_logger();
     let db = config::db::init_db(&env).await?;
 
-    let state = shared::state::AppState {
+    let state = presentation::state::AppState {
         started_at: Instant::now(),
         db,
     };

@@ -21,7 +21,7 @@ pub struct ListQuery {
 pub trait ListQueryImpl {
     fn start(&self) -> Option<i32>;
     fn limit(&self) -> Option<i32>;
-    fn keyword(&self) -> Option<String>;
-    fn sort_by(&self) -> Option<String>;
-    fn order(&self) -> Option<String>;
+    fn keyword(&self) -> Option<&str>;
+    fn sort_by(&self) -> Option<&str>;
+    fn order(&self) -> Option<&str>;
 }

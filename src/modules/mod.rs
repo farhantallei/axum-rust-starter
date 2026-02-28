@@ -2,7 +2,7 @@ use axum::Router;
 
 use crate::{
     modules::{health::health_route, user::user_route},
-    shared::state::AppState,
+    presentation::state::AppState,
 };
 
 pub mod health;

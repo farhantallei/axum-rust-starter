@@ -1,11 +1,11 @@
 use sqlx::{Postgres, QueryBuilder};
 
 use crate::{
+    infrastructure::sql::{filter::Filter, order::OrderBy},
     modules::{
-        user::user_spec::{UserFilter, UserJoin, UserOrder},
-        user_role::user_role_query::UserRoleQuery,
+        user::domain::spec::{UserFilter, UserJoin, UserOrder},
+        user_role::persistence::query::UserRoleQuery,
     },
-    utils::{filter::Filter, order::OrderBy},
 };
 
 pub struct UserQuery;
@@ -34,7 +34,7 @@ impl UserQuery {
 
     pub fn count<'a>(qb: &mut QueryBuilder<'a, Postgres>, joins: &[UserJoin]) {
         // SELECT
-        qb.push(format!("SELECT COUNT({}.*)", Self::BASE_ALIAS));
+        qb.push("SELECT COUNT(*)");
 
         // FROM
         qb.push(format!(" FROM {} {}", Self::TABLE, Self::BASE_ALIAS));
@@ -88,46 +88,43 @@ impl UserQuery {
     }
 
     fn filter_fragment<'a>(qb: &mut QueryBuilder<'a, Postgres>, cond: &UserFilter, alias: &str) {
+        qb.push(alias);
+        qb.push(".");
         match cond {
             UserFilter::NameLike(value) => {
-                qb.push(format!("{}.name ILIKE ", alias));
-                qb.push_bind(format!("%{}%", value));
+                qb.push("name ILIKE '%' || ");
+                qb.push_bind(value.to_string());
+                qb.push(" || '%'");
             }
 
             UserFilter::Email(value) => {
-                qb.push(format!("{}.email = ", alias));
+                qb.push("email = ");
                 qb.push_bind(value.to_string());
             }
 
             UserFilter::IsActive(actived) => {
-                qb.push(format!("{}.status = ", alias));
+                qb.push("status = ");
                 qb.push_bind(*actived);
             }
 
             UserFilter::IsDeleted(deleted) => {
                 if *deleted {
-                    qb.push(format!(" {}.deleted_at IS NOT NULL", alias));
+                    qb.push("deleted_at IS NOT NULL");
                 } else {
-                    qb.push(format!(" {}.deleted_at IS NULL", alias));
+                    qb.push("deleted_at IS NULL");
                 }
             }
         }
     }
 
     fn order_fragment<'a>(qb: &mut QueryBuilder<'a, Postgres>, col: &UserOrder, alias: &str) {
-        match col {
-            UserOrder::Id => {
-                qb.push(format!("{}.id", alias));
-            }
-            UserOrder::Name => {
-                qb.push(format!("{}.name", alias));
-            }
-            UserOrder::Email => {
-                qb.push(format!("{}.email", alias));
-            }
-            UserOrder::CreatedAt => {
-                qb.push(format!("{}.created_at", alias));
-            }
-        }
+        qb.push(alias);
+        qb.push(".");
+        qb.push(match col {
+            UserOrder::Id => "id",
+            UserOrder::Name => "name",
+            UserOrder::Email => "email",
+            UserOrder::CreatedAt => "created_at",
+        });
     }
 }

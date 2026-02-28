@@ -2,27 +2,40 @@ use axum::extract::{Query, State};
 
 use crate::{
     modules::user::{
-        user_dto::{GetUserQuery, GetUserResponse},
+        presentation::{
+            dto::{GetUserQuery, GetUserResponse},
+            mapper::build_user_filters,
+        },
+        user_repository::UserRepository,
         user_service::UserService,
     },
-    shared::{error::AppError, request::ListQueryImpl, response::ListResponse, state::AppState},
+    presentation::{
+        error::HttpError,
+        http::{common_query::ListQueryImpl, common_response::ListResponse},
+        state::AppState,
+    },
 };
 
 #[tracing::instrument(skip(state))]
 pub async fn find_all_user_handler(
     State(state): State<AppState>,
     Query(params): Query<GetUserQuery>,
-) -> Result<ListResponse<GetUserResponse>, AppError> {
-    let (data, total) = UserService::find_all_user_with_count(
-        &state.db,
-        &[],
-        &params.to_filters(),
-        params.sort_by(),
-        params.order(),
-        params.limit(),
-        params.start(),
-    )
-    .await?;
+) -> Result<ListResponse<GetUserResponse>, HttpError> {
+    let repo = UserRepository::new(state.db.clone());
+    let service = UserService::new(repo);
+
+    let filters = build_user_filters(&params);
+
+    let (data, total) = service
+        .find_all_user_with_count(
+            &[],
+            &filters,
+            params.sort_by(),
+            params.order(),
+            params.limit(),
+            params.start(),
+        )
+        .await?;
 
     let response = data
         .into_iter()

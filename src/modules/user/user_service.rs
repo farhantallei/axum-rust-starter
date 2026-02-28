@@ -1,32 +1,34 @@
 use tracing::instrument;
 
 use crate::{
-    config::db::DbPool,
+    application::error::ApplicationError,
     modules::user::{
-        user_model::UserModel,
+        domain::spec::{UserFilter, UserJoin, UserOrder},
+        persistence::entity::UserEntity,
+        presentation::error::UserError,
         user_repository::UserRepository,
-        user_spec::{UserFilter, UserJoin, UserOrder},
-    },
-    utils::{
-        order::{Order, OrderBy},
-        pagination::Pagination,
     },
 };
 
-#[derive(Clone)]
-pub struct UserService;
+pub struct UserService {
+    repo: UserRepository,
+}
 
 impl UserService {
-    #[instrument(skip(joins, filters))]
+    pub fn new(repo: UserRepository) -> Self {
+        Self { repo }
+    }
+
+    #[instrument(skip(self, joins, filters))]
     pub async fn find_all_user_with_count(
-        db: &DbPool,
+        &self,
         joins: &[UserJoin],
         filters: &[UserFilter],
-        sort_by: Option<String>,
-        order: Option<String>,
+        sort_by: Option<&str>,
+        order: Option<&str>,
         limit: Option<i32>,
         offset: Option<i32>,
-    ) -> Result<(Vec<UserModel>, i64), anyhow::Error> {
+    ) -> Result<(Vec<UserEntity>, i64), ApplicationError> {
         // ===== JOIN =====
         let mut effective_joins = Vec::with_capacity(1 + joins.len());
         effective_joins.push(UserJoin::UserRole);
@@ -38,30 +40,26 @@ impl UserService {
         effective_filters.extend_from_slice(filters);
 
         // ===== ORDER =====
-        let order_field = match sort_by.as_deref() {
+        let order_field = match sort_by {
             Some("name") => UserOrder::Name,
             _ => UserOrder::Id,
         };
-        let order = Order::from_str(order.as_deref(), order_field);
-        let effective_orders = OrderBy(vec![order]);
-
-        // ===== PAGINATION =====
-        let pagination = Pagination::new(limit, offset);
 
         // ===== EXECUTE PARALLEL QUERY =====
         let (total_res, data_res) = tokio::join!(
-            UserRepository::count_all(db, &effective_joins, &effective_filters),
-            UserRepository::find_all(
-                db,
+            self.repo.count_all(&effective_joins, &effective_filters),
+            self.repo.find_all(
                 &effective_joins,
                 &effective_filters,
-                &effective_orders,
-                &pagination,
+                order_field,
+                order,
+                limit,
+                offset,
             )
         );
 
-        let total = total_res?;
-        let data = data_res?;
+        let total = total_res.map_err(UserError::Unexpected)?;
+        let data = data_res.map_err(UserError::Unexpected)?;
 
         Ok((data, total))
     }

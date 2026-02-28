@@ -1,22 +1,27 @@
+use axum::{extract::State, Json};
+use chrono::Utc;
 use std::{
     env::consts::{ARCH, OS},
     process,
 };
-
-use axum::{Json, extract::State};
-use chrono::Utc;
 use sysinfo::System;
 use tracing::instrument;
 
 use crate::{
-    modules::health::{health_dto::GetHealthResponse, health_service::HealthService},
-    shared::{error::AppError, state::AppState},
+    modules::health::{
+        health_repository::HealthRepository, health_service::HealthService,
+        presentation::dto::GetHealthResponse,
+    },
+    presentation::{error::HttpError, state::AppState},
 };
 
 #[instrument(skip(state))]
 pub async fn healthcheck_handler(
     State(state): State<AppState>,
-) -> Result<Json<GetHealthResponse>, AppError> {
+) -> Result<Json<GetHealthResponse>, HttpError> {
+    let repo = HealthRepository::new(state.db.clone());
+    let service = HealthService::new(repo);
+
     let mut sys = System::new_all();
 
     sys.refresh_cpu_all();
@@ -25,7 +30,7 @@ pub async fn healthcheck_handler(
 
     sys.refresh_memory();
 
-    let db_status = HealthService::get_db_connection(&state.db).await;
+    let db_status = service.get_db_connection().await?;
 
     let response = GetHealthResponse {
         status: "ok".to_string(),

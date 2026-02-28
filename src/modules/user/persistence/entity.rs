@@ -2,10 +2,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{types::Json, FromRow};
 
-use crate::modules::user_role::user_role_model::UserRoleModel;
+use crate::modules::user_role::persistence::entity::UserRoleEntity;
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct UserModel {
+pub struct UserEntity {
     pub id: i32,
     pub username: String,
     #[serde(skip_serializing)]
@@ -18,5 +18,5 @@ pub struct UserModel {
     #[serde(skip_serializing)]
     pub deleted_at: Option<DateTime<Utc>>,
 
-    pub role: Option<Json<UserRoleModel>>,
+    pub role: Option<Json<UserRoleEntity>>,
 }

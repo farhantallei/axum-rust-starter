@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct UserRoleModel {
+pub struct UserRoleEntity {
     pub id: i32,
     pub name: String,
     pub created_at: DateTime<Utc>,

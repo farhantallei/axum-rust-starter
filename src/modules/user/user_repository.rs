@@ -2,48 +2,67 @@ use sqlx::QueryBuilder;
 
 use crate::{
     config::db::DbPool,
-    modules::user::{
-        user_model::UserModel,
-        user_query::UserQuery,
-        user_spec::{UserFilter, UserJoin, UserOrder},
+    infrastructure::sql::{
+        order::{Order, OrderBy},
+        pagination::Pagination,
     },
-    utils::{order::OrderBy, pagination::Pagination},
+    modules::user::{
+        domain::spec::{UserFilter, UserJoin, UserOrder},
+        persistence::{entity::UserEntity, query::UserQuery},
+    },
 };
 
-pub struct UserRepository;
+pub struct UserRepository {
+    db: DbPool,
+}
 
 impl UserRepository {
+    pub fn new(db: DbPool) -> Self {
+        Self { db }
+    }
+
     pub async fn find_all(
-        db: &DbPool,
+        &self,
         joins: &[UserJoin],
         filters: &[UserFilter],
-        orders: &OrderBy<UserOrder>,
-        pagination: &Pagination,
-    ) -> Result<Vec<UserModel>, sqlx::Error> {
+        sort_by: UserOrder,
+        order: Option<&str>,
+        limit: Option<i32>,
+        offset: Option<i32>,
+    ) -> Result<Vec<UserEntity>, anyhow::Error> {
         let mut qb = QueryBuilder::new("");
 
         UserQuery::select(&mut qb, joins);
         UserQuery::filter(&mut qb, filters);
-        UserQuery::order(&mut qb, orders);
 
+        // ===== ORDER =====
+        let order = Order::from_str(order, sort_by);
+        let orders = OrderBy(vec![order]);
+        UserQuery::order(&mut qb, &orders);
+
+        // ===== PAGINATION =====
+        let pagination = Pagination::new(limit, offset);
         pagination.apply(&mut qb);
 
-        let rows = qb.build_query_as::<UserModel>().fetch_all(db).await?;
+        let rows = qb
+            .build_query_as::<UserEntity>()
+            .fetch_all(&self.db)
+            .await?;
 
         Ok(rows)
     }
 
     pub async fn count_all(
-        db: &DbPool,
+        &self,
         joins: &[UserJoin],
         filters: &[UserFilter],
-    ) -> Result<i64, sqlx::Error> {
+    ) -> Result<i64, anyhow::Error> {
         let mut qb = QueryBuilder::new("");
 
         UserQuery::count(&mut qb, joins);
         UserQuery::filter(&mut qb, filters);
 
-        let count: i64 = qb.build_query_scalar().fetch_one(db).await?;
+        let count: i64 = qb.build_query_scalar().fetch_one(&self.db).await?;
 
         Ok(count)
     }
