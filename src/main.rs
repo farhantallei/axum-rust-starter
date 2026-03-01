@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use tower_http::trace::TraceLayer;
+use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 use tracing::info;
 
 pub mod application;
@@ -22,8 +22,9 @@ async fn main() -> anyhow::Result<()> {
         db,
     };
 
-    let app = modules::create_router()
+    let app = presentation::router::create_router()
         .with_state(state)
+        .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http());
 
     let addr = format!("0.0.0.0:{}", env.port);
