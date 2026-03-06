@@ -3,8 +3,10 @@ use tracing::instrument;
 use crate::{
     application::error::ApplicationError,
     modules::user::{
-        domain::spec::{UserFilter, UserJoin, UserOrder},
-        persistence::entity::UserEntity,
+        domain::{
+            model::{UpdateUserPayload, UserModel, UserPayload},
+            spec::{UserFilter, UserJoin, UserOrder},
+        },
         presentation::error::UserError,
         user_repository::UserRepository,
     },
@@ -28,7 +30,7 @@ impl UserService {
         order: Option<&str>,
         limit: Option<i32>,
         offset: Option<i32>,
-    ) -> Result<(Vec<UserEntity>, i64), ApplicationError> {
+    ) -> Result<(Vec<UserModel>, i64), ApplicationError> {
         // ===== JOIN =====
         let mut effective_joins = Vec::with_capacity(1 + joins.len());
         effective_joins.push(UserJoin::UserRole);
@@ -62,5 +64,39 @@ impl UserService {
         let data = data_res.map_err(UserError::Unexpected)?;
 
         Ok((data, total))
+    }
+
+    #[instrument(skip(self))]
+    pub async fn update_user(
+        &self,
+        id: i32,
+        payload: UpdateUserPayload,
+    ) -> Result<UserModel, ApplicationError> {
+        let data = self
+            .repo
+            .update(id, payload)
+            .await
+            .map_err(UserError::Unexpected)?
+            .ok_or(UserError::NotFound)?;
+
+        Ok(data)
+    }
+
+    #[instrument(skip(self))]
+    pub async fn create_user(&self, payload: UserPayload) -> Result<UserModel, ApplicationError> {
+        let data = self
+            .repo
+            .insert(payload)
+            .await
+            .map_err(UserError::Unexpected)?;
+
+        Ok(data)
+    }
+
+    #[instrument(skip(self))]
+    pub async fn delete_user(&self, id: i32) -> Result<(), ApplicationError> {
+        self.repo.delete(id).await.map_err(UserError::Unexpected)?;
+
+        Ok(())
     }
 }

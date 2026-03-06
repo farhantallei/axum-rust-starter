@@ -7,8 +7,15 @@ use crate::{
         pagination::Pagination,
     },
     modules::user::{
-        domain::spec::{UserFilter, UserJoin, UserOrder},
-        persistence::{entity::UserEntity, query::UserQuery},
+        domain::{
+            model::{UpdateUserPayload, UserModel, UserPayload},
+            spec::{UserFilter, UserJoin, UserOrder},
+        },
+        persistence::{
+            mutation::UserMutation,
+            query::UserQuery,
+            row::{UserInsertRow, UserRow},
+        },
     },
 };
 
@@ -29,7 +36,7 @@ impl UserRepository {
         order: Option<&str>,
         limit: Option<i32>,
         offset: Option<i32>,
-    ) -> Result<Vec<UserEntity>, anyhow::Error> {
+    ) -> Result<Vec<UserModel>, anyhow::Error> {
         let mut qb = QueryBuilder::new("");
 
         UserQuery::select(&mut qb, joins);
@@ -44,12 +51,9 @@ impl UserRepository {
         let pagination = Pagination::new(limit, offset);
         pagination.apply(&mut qb);
 
-        let rows = qb
-            .build_query_as::<UserEntity>()
-            .fetch_all(&self.db)
-            .await?;
+        let rows = qb.build_query_as::<UserRow>().fetch_all(&self.db).await?;
 
-        Ok(rows)
+        Ok(rows.into_iter().map(Into::into).collect())
     }
 
     pub async fn count_all(
@@ -65,5 +69,35 @@ impl UserRepository {
         let count: i64 = qb.build_query_scalar().fetch_one(&self.db).await?;
 
         Ok(count)
+    }
+
+    pub async fn insert(&self, payload: UserPayload) -> Result<UserModel, anyhow::Error> {
+        let mut qb = QueryBuilder::new("");
+        UserMutation::insert(&mut qb, &payload);
+        let row = qb
+            .build_query_as::<UserInsertRow>()
+            .fetch_one(&self.db)
+            .await?;
+        Ok(row.into())
+    }
+
+    pub async fn update(
+        &self,
+        id: i32,
+        payload: UpdateUserPayload,
+    ) -> Result<Option<UserModel>, anyhow::Error> {
+        let mut qb = QueryBuilder::new("");
+        UserMutation::update(&mut qb, id, &payload);
+        let row = qb
+            .build_query_as::<UserInsertRow>()
+            .fetch_optional(&self.db)
+            .await?;
+        Ok(row.map(Into::into))
+    }
+
+    pub async fn delete(&self, id: i32) -> Result<(), anyhow::Error> {
+        let mut qb = QueryBuilder::new("");
+        UserMutation::delete(&mut qb, id);
+        Ok(())
     }
 }

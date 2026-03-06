@@ -1,9 +1,11 @@
 use axum::{routing::get, Router};
 
-use crate::{
-    modules::health::health_controller::healthcheck_handler, presentation::state::AppState,
-};
+use crate::{modules::health::health_controller::HealthController, presentation::state::AppState};
 
-pub fn router() -> Router<AppState> {
-    Router::new().route("/", get(healthcheck_handler))
+pub struct HealthRoute;
+
+impl HealthRoute {
+    pub fn routes() -> Router<AppState> {
+        Router::new().route("/", get(HealthController::healthcheck_handler))
+    }
 }
